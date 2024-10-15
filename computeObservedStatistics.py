@@ -32,6 +32,7 @@ def computeObservedStatistics(G, Aobs, changestats_func_list):
 
     """
     # Calculate observed statistics by summing change stats for each 1 variable
+    print(f"changestats_func_list: {changestats_func_list}")
     n = len(changestats_func_list)
     Zobs = np.zeros(n)
     Acopy = np.zeros(len(Aobs))

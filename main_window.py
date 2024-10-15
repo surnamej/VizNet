@@ -18,6 +18,7 @@ from changeStatisticsALAAM import changeContagion as changeContagionUndirected
 from changeStatisticsALAAMdirected import changeContagion as changeContagionDirected
 from basicALAAMsampler import basicALAAMsampler
 from AnalysisReport import AnalysisReport
+from estimateALAAMSA import *
 
 class MainWindow(QMainWindow):
     # Define the signals at the class level
@@ -238,6 +239,7 @@ class MainWindow(QMainWindow):
         # Handle Export button clicks to close the application
         self.ui.export_btn_1.clicked.connect(self.close)
         self.ui.export_btn_2.clicked.connect(self.close)
+
 
 
     def on_page_button_toggled(self, checked, index):
@@ -483,6 +485,7 @@ class MainWindow(QMainWindow):
 
     def collect_selected_functions(self):
         selected_funcs = []  # List to store all selected partial functions
+        selected_names = []
 
         # Helper function to find the correct function based on attribute name
         def get_function_for_attr(attr):
@@ -495,27 +498,33 @@ class MainWindow(QMainWindow):
         for attr in self.selected_binary_attributes:
             mapped_func = get_function_for_attr(attr[1][0])
             if mapped_func:
-                partial_func = partial(mapped_func, attr[1][0])
-                selected_funcs.append(partial_func.func)
+                partial_func = partial(mapped_func, attr[0])
+                selected_funcs.append(partial_func)
+                selected_names.append(attr[1][0])
 
         # Collect partial functions from selected continuous attributes
         for attr in self.selected_continuous_attributes:
             mapped_func = get_function_for_attr(attr[1][0])
             if mapped_func:
-                partial_func = partial(mapped_func, attr[1][0])
+                partial_func = partial(mapped_func, attr[0])
                 selected_funcs.append(partial_func)
+                selected_names.append(attr[1][0])
         
         # Collect partial functions from selected categorical attributes (if applicable)
         for attr in self.selected_categorical_attributes:
             mapped_func = get_function_for_attr(attr[1][0])
             if mapped_func:
-                partial_func = partial(mapped_func, attr[1][0])
+                partial_func = partial(mapped_func, attr[0])
                 selected_funcs.append(partial_func)
+                selected_names.append(attr[1][0])
         
-        return selected_funcs  # Return the combined list of partial functions
+        return selected_funcs, selected_names  # Return the combined list of partial functions
     
     # Analysis function
     def analysis(self):
+        # Move to the results page (index 1 in the stacked widget)
+        self.pages.setCurrentIndex(1)
+
         # Get the file paths and parameters from the UI inputs
         edgeFilePath = self.ui.input_edge_list_file.text()
         outComeFilePath = self.ui.input_outcome_file.text()
@@ -531,11 +540,14 @@ class MainWindow(QMainWindow):
 
         print("Analyse start")
         ### Collect Attribute Parameters (partial functions)
-        selected_funcs_from_attributes = self.collect_selected_functions()
+        selected_funcs_from_attributes, selected_names_from_attributes = self.collect_selected_functions()
+
         selected_funcs.extend(selected_funcs_from_attributes)  # Append attribute-related partial functions
+        selected_names.extend(selected_names_from_attributes)
         # No names added for partial functions as they are dynamic based on attributes
 
-        print(selected_funcs)
+        print(f"selected_funcs: {selected_funcs}")
+        print(f"selected_names: {selected_names}")
 
         ### Collect Network Parameters
         # Use the appropriate dictionary based on whether the graph is directed or undirected
@@ -545,6 +557,7 @@ class MainWindow(QMainWindow):
                 selected_funcs.append(func_dict[param])  # Append the network parameter function directly
                 selected_names.append(param)  # Keep track of the network function's name for reporting
         
+
         # Debugging: Print the selected functions to verify
         print(f"Collected Functions: {selected_funcs}")
         print(f"Collected Function Names: {selected_names}")
@@ -552,12 +565,12 @@ class MainWindow(QMainWindow):
         ### Create alaam_inputs dictionary for analysis
         alaam_inputs = {
             "edgelist_filename": edgeFilePath,
+            "param_func_list": selected_funcs,  # Combined list of all functions (network + attributes)
+            "labels": selected_names,  # Labels for the network parameter functions
             "outcome_bin_filename": outComeFilePath,
             "binattr_filename": binaryFilePath,
             "contattr_filename": continousFilePath,
             "catattr_filename": categoricalFilePath,
-            "param_func_list": selected_funcs,  # Combined list of all functions (network + attributes)
-            "labels": selected_names,  # Labels for the network parameter functions
             "sampler_func": basicALAAMsampler,
             "directed": self.directed_graph_checkBox.isChecked(),
             "GoFiterationInStep": iterations,
@@ -567,7 +580,29 @@ class MainWindow(QMainWindow):
             "outputObsStatsFilename": "outputObsStatsFile.txt",
         }
 
+        print(alaam_inputs)
+
         ### Perform the analysis and generate HTML content for the report
-        analysisReport = AnalysisReport()
-        html_content = analysisReport.setHtmlContent(alaam_inputs)
-        analysisReport.loadHTMLContent(html_content, self.ui.stackedWidget, self.ui.report_page)
+        # analysisReport = AnalysisReport()
+        
+        # html_content = analysisReport.setHtmlContent(alaam_inputs)
+        # analysisReport.loadHTMLContent(html_content, self.ui.stackedWidget, self.ui.report_page)
+
+        results = run_on_network_attr(
+            edgeFilePath,  # Network data file path
+            selected_funcs,  # List of selected functions
+            selected_names,  # List of selected names
+            outComeFilePath,  # Sample file path
+            binaryFilePath,  # Binary attribute file path
+            continousFilePath,  # Continuous attribute file path
+            None, # categorical attribute file path
+            basicALAAMsampler,
+            None,
+            self.directed_graph_checkBox.isChecked(),
+            False,
+            iterations,
+            burnIn,
+            None,
+            None
+        )
+        print(results) 

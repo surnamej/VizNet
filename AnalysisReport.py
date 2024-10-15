@@ -91,7 +91,6 @@ class AnalysisReport():
         return descriptive_analysis+graph_plot+graph_analysis+node_analysis
     
 
-    
     def getALAAMSAAnalysis(self, model_session, alaam_inputs):
         print(alaam_inputs)
 
