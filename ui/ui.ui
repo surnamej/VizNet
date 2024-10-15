@@ -461,6 +461,9 @@
                     <height>16777215</height>
                    </size>
                   </property>
+                  <property name="maximum">
+                   <number>20000</number>
+                  </property>
                  </widget>
                 </item>
                </layout>
@@ -482,6 +485,9 @@
                     <height>16777215</height>
                    </size>
                   </property>
+                  <property name="maximum">
+                   <number>20000</number>
+                  </property>
                  </widget>
                 </item>
                </layout>
@@ -502,6 +508,9 @@
                     <width>70</width>
                     <height>16777215</height>
                    </size>
+                  </property>
+                  <property name="maximum">
+                   <number>20000</number>
                   </property>
                  </widget>
                 </item>
@@ -631,7 +640,7 @@
            </widget>
           </widget>
          </widget>
-         <widget class="QWidget" name="static_repor_page">
+         <widget class="QWidget" name="report_page">
           <layout class="QGridLayout" name="gridLayout_4">
            <item row="0" column="0">
             <widget class="QLabel" name="label_2">
@@ -643,17 +652,6 @@
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="interactive_report_page">
-          <layout class="QGridLayout" name="gridLayout_3">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label_3">
-             <property name="text">
-              <string>Interactive report</string>
              </property>
             </widget>
            </item>
@@ -747,29 +745,6 @@
            <property name="icon">
             <iconset>
              <normaloff>:/icon/icon/file.png</normaloff>:/icon/icon/file.png</iconset>
-           </property>
-           <property name="iconSize">
-            <size>
-             <width>14</width>
-             <height>14</height>
-            </size>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="autoExclusive">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="interactive_report_btn_2">
-           <property name="text">
-            <string>Interactive report</string>
-           </property>
-           <property name="icon">
-            <iconset>
-             <normaloff>:/icon/icon/interactive.png</normaloff>:/icon/icon/interactive.png</iconset>
            </property>
            <property name="iconSize">
             <size>
@@ -918,29 +893,6 @@
            </property>
           </widget>
          </item>
-         <item>
-          <widget class="QPushButton" name="interactive_report_btn_1">
-           <property name="text">
-            <string/>
-           </property>
-           <property name="icon">
-            <iconset>
-             <normaloff>:/icon/icon/interactive.png</normaloff>:/icon/icon/interactive.png</iconset>
-           </property>
-           <property name="iconSize">
-            <size>
-             <width>20</width>
-             <height>20</height>
-            </size>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="autoExclusive">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
         </layout>
        </item>
        <item>
@@ -1046,22 +998,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>interactive_report_btn_1</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>interactive_report_btn_2</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>33</x>
-     <y>123</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>69</x>
-     <y>125</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>create_btn_2</sender>
    <signal>toggled(bool)</signal>
    <receiver>create_btn_1</receiver>
@@ -1090,22 +1026,6 @@
     <hint type="destinationlabel">
      <x>26</x>
      <y>90</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>interactive_report_btn_2</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>interactive_report_btn_1</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>143</x>
-     <y>112</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>39</x>
-     <y>114</y>
     </hint>
    </hints>
   </connection>

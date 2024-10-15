@@ -1,12 +1,13 @@
 import sys
 import os
-from PyQt6.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QWidget, QGridLayout, QFileDialog, QLabel, QPushButton, QCheckBox
+from PyQt6.QtWidgets import QMainWindow, QApplication, QVBoxLayout, QWidget, QGridLayout, QFileDialog, QLabel, QPushButton, QCheckBox, QHBoxLayout, QDialog
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, pyqtSignal, Qt
 from PyQt6.QtGui import QIcon, QPixmap
 
 # Import the UI class from the `main_ui_ui.py`
 from ui.ui_ui import Ui_MainWindow
 
+# Network parameter configuration window
 class NetworkParameterWindow(QWidget):
     selectedSignal = pyqtSignal(list)
 
@@ -71,15 +72,74 @@ class NetworkParameterWindow(QWidget):
         # Close the window after selection
         self.close()
 
+# Attribute covariate parameter configuration Window
+class AttributeParameterWindow(QDialog):
+    def __init__(self, attribute_type, attributes, parent=None):
+        super(AttributeParameterWindow, self).__init__(parent)
+        self.setWindowTitle(f"Set Parameters for {attribute_type} Attributes")
+        
+        self.layout = QVBoxLayout(self)
+        
+        self.selected_attributes = []  # To store selected attributes
+        
+        # Add a label to show what type of attribute we're working with
+        self.label = QLabel(f"Select {attribute_type} Attributes to Set Parameters:")
+        self.layout.addWidget(self.label)
+        
+        # Create a checkbox for each attribute and add to the dialog layout
+        self.checkboxes = {}
+        for attr in attributes:
+            checkbox = QCheckBox(attr)
+            self.checkboxes[attr] = checkbox
+            self.layout.addWidget(checkbox)
+        
+        # Create OK and Cancel buttons
+        self.button_layout = QHBoxLayout()
+        self.ok_button = QPushButton("OK")
+        self.cancel_button = QPushButton("Cancel")
+        
+        self.button_layout.addWidget(self.ok_button)
+        self.button_layout.addWidget(self.cancel_button)
+        self.layout.addLayout(self.button_layout)
+        
+        # Connect button signals
+        self.ok_button.clicked.connect(self.ok_clicked)
+        self.cancel_button.clicked.connect(self.reject)
+    
+    def ok_clicked(self):
+        # Collect selected attributes
+        self.selected_attributes = [attr for attr, checkbox in self.checkboxes.items() if checkbox.isChecked()]
+        self.accept()  # Close the dialog and return control to the main application
+
+    def get_selected_attributes(self):
+        return self.selected_attributes
+
+# Main window
 class MainWindow(QMainWindow):
     # Define the signals at the class level
     networkSignal = pyqtSignal(object)  # Signal to emit mode for the network window
     binarySignal = pyqtSignal(object)  # Signal to emit binary data
-    continiousSignal = pyqtSignal(object)  # Signal to emit continuous data
+    continuousSignal = pyqtSignal(object)  # Signal to emit continuous data
     categoricalSignal = pyqtSignal(object)  # Signal to emit categorical data
 
     def __init__(self):
         super(MainWindow, self).__init__()
+
+        # Initialise attributes (empty at first)
+        self.binary_attributes = []
+        self.continuous_attributes = []
+        self.categorical_attributes = []
+
+        # Initialise lists to store user-selected attributes
+        self.selected_binary_attributes = []
+        self.selected_continuous_attributes = []
+        self.selected_categorical_attributes = []
+
+        # Create a central widget and apply a layout
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        self.layout = QVBoxLayout(central_widget)  # Apply layout to central widget
 
         # UI setup
         self.setup_ui()
@@ -105,14 +165,19 @@ class MainWindow(QMainWindow):
         self.parameter_categorical_btn.setEnabled(False)
 
         # Connect checkbox state to button enabling/disabling
-        self.checkBox_binary_attr.stateChanged.connect(self.check_checkboxes_state)
-        self.checkBox_continuous_attr.stateChanged.connect(self.check_checkboxes_state)
-        self.checkBox_categorical_attr.stateChanged.connect(self.check_checkboxes_state)
+        self.checkBox_binary_attr.stateChanged.connect(self.check_checkboxes_attr_state)
+        self.checkBox_continuous_attr.stateChanged.connect(self.check_checkboxes_attr_state)
+        self.checkBox_categorical_attr.stateChanged.connect(self.check_checkboxes_attr_state)
 
-        # Connect the file selection button to the file dialog
+        # Connect buttons to methods for selecting files and setting parameters
         self.browse_binary_attr.clicked.connect(self.selectBinaryFile)
-        self.browse_continuous_attr.clicked.connect(self.selectContinousFile)
+        self.browse_continuous_attr.clicked.connect(self.selectContinuousFile)
         self.browse_categorical_attr.clicked.connect(self.selectCategoricalFile)
+
+        self.parameter_binary_btn.clicked.connect(self.show_binary_dialog)
+        self.parameter_continuous_btn.clicked.connect(self.show_continuous_dialog)
+        self.parameter_categorical_btn.clicked.connect(self.show_categorical_dialog)
+
 
     def setup_ui(self):
         self.ui = Ui_MainWindow()
@@ -182,12 +247,10 @@ class MainWindow(QMainWindow):
 
         self.ui.create_btn_1.setIcon(QIcon("ui/icon/edit.png"))
         self.ui.static_report_btn_1.setIcon(QIcon("ui/icon/file.png"))
-        self.ui.interactive_report_btn_1.setIcon(QIcon("ui/icon/interactive.png"))
         self.ui.export_btn_1.setIcon(QIcon("ui/icon/export.png"))
 
         self.ui.create_btn_2.setIcon(QIcon("ui/icon/edit.png"))
         self.ui.static_report_btn_2.setIcon(QIcon("ui/icon/file.png"))
-        self.ui.interactive_report_btn_2.setIcon(QIcon("ui/icon/interactive.png"))
         self.ui.export_btn_2.setIcon(QIcon("ui/icon/export.png"))
 
         self.ui.change_btn.setIcon(QIcon("ui/icon/more.png"))
@@ -197,9 +260,7 @@ class MainWindow(QMainWindow):
             (self.ui.create_btn_1, 0),
             (self.ui.create_btn_2, 0),
             (self.ui.static_report_btn_1, 1),
-            (self.ui.static_report_btn_2, 1),
-            (self.ui.interactive_report_btn_1, 2),
-            (self.ui.interactive_report_btn_2, 2)
+            (self.ui.static_report_btn_2, 1)
         ]
 
         for button, page_index in buttons:
@@ -268,48 +329,49 @@ class MainWindow(QMainWindow):
         self.input_edge_list_file.setText(edgeFile[0])
     
     def selectBinaryFile(self):
-        # Open file dialog to select the binary attribute file
+        # Get file path and file filter as a tuple
         binaryFile, _ = QFileDialog.getOpenFileName(self, 'Open Binary Attribute File', '', 'Text Files (*.txt);;All Files (*)')
+        
+        # Set the text in the input field if a file was selected
         if binaryFile:
             self.input_binary_attr.setText(binaryFile)
-            # Read the column names from the first line of the binary attribute file
+            
+            # Open the selected file and read the first line to get binary attributes
             with open(binaryFile, 'r') as file:
                 first_line = file.readline().strip()
-                column_names = first_line.split()
-            # Store binary attributes
-            self.binattr = {col: [] for col in column_names}
-            print("Binary Attribute File Columns:", column_names)
-            return column_names
+                self.binary_attributes = first_line.split()
+            print("Binary Attribute File Columns:", self.binary_attributes)
+            
+            # Emit the signal with the loaded binary attributes
+            self.binarySignal.emit(self.binary_attributes)
 
-    def selectContinousFile(self):
-        # Open file dialog to select the continuous attribute file
-        continousFile, _ = QFileDialog.getOpenFileName(self, 'Open Continuous Attribute File', '', 'Text Files (*.txt);;All Files (*)')
-        if continousFile:
-            self.input_continuous_attr.setText(continousFile)
-            # Read the column names from the first line of the continuous attribute file
-            with open(continousFile, 'r') as file:
+    def selectContinuousFile(self):
+        continuousFile, _ = QFileDialog.getOpenFileName(self, 'Open Continuous Attribute File', '', 'Text Files (*.txt);;All Files (*)')
+        
+        if continuousFile:
+            self.input_continuous_attr.setText(continuousFile)
+            
+            with open(continuousFile, 'r') as file:
                 first_line = file.readline().strip()
-                column_names = first_line.split()
-            # Store continuous attributes
-            self.contattr = {col: [] for col in column_names}
-            print("Continuous Attribute File Columns:", column_names)
-            return column_names
+                self.continuous_attributes = first_line.split()
+            print("Continuous Attribute File Columns:", self.continuous_attributes)
+            
+            self.continuousSignal.emit(self.continuous_attributes)
 
     def selectCategoricalFile(self):
-        # Open file dialog to select the categorical attribute file
         categoricalFile, _ = QFileDialog.getOpenFileName(self, 'Open Categorical Attribute File', '', 'Text Files (*.txt);;All Files (*)')
+        
         if categoricalFile:
             self.input_categorical_attr.setText(categoricalFile)
-            # Read the column names from the first line of the categorical attribute file
+            
             with open(categoricalFile, 'r') as file:
                 first_line = file.readline().strip()
-                column_names = first_line.split()
-            # Store categorical attributes
-            self.catattr = {col: [] for col in column_names}
-            print("Categorical Attribute File Columns:", column_names)
-            return column_names
+                self.categorical_attributes = first_line.split()
+            print("Categorical Attribute File Columns:", self.categorical_attributes)
+            
+            self.categoricalSignal.emit(self.categorical_attributes)
 
-    def check_checkboxes_state(self):
+    def check_checkboxes_attr_state(self):
         # Enable or disable the button for the binary attribute
         if self.checkBox_binary_attr.isChecked():
             self.browse_binary_attr.setEnabled(True)
@@ -355,6 +417,56 @@ class MainWindow(QMainWindow):
         # Handle the result from the networkWindow (selected checkboxes)
         self.parameters_list = selected
         print("Selected parameters:", selected)
+
+    def show_binary_dialog(self):
+        if not self.binary_attributes:
+            print("No binary attributes loaded.")
+            return
+
+        # Create the AttributeParameterWindow and pre-select the checkboxes based on stored selections
+        dialog = AttributeParameterWindow("Binary", self.binary_attributes, self)
+        
+        # Pre-check the checkboxes with previously selected binary attributes
+        for attr in self.selected_binary_attributes:
+            if attr in dialog.checkboxes:
+                dialog.checkboxes[attr].setChecked(True)
+
+        # Show the dialog and retrieve the selected attributes if the user clicks OK
+        if dialog.exec():
+            self.selected_binary_attributes = dialog.get_selected_attributes()  # Store user's selections
+            print(f"Selected Binary Attributes: {self.selected_binary_attributes}")
+
+    def show_continuous_dialog(self):
+        if not self.continuous_attributes:
+            print("No continuous attributes loaded.")
+            return
+
+        dialog = AttributeParameterWindow("Continuous", self.continuous_attributes, self)
+
+        # Pre-check the checkboxes with previously selected continuous attributes
+        for attr in self.selected_continuous_attributes:
+            if attr in dialog.checkboxes:
+                dialog.checkboxes[attr].setChecked(True)
+
+        if dialog.exec():
+            self.selected_continuous_attributes = dialog.get_selected_attributes()  # Store user's selections
+            print(f"Selected Continuous Attributes: {self.selected_continuous_attributes}")
+
+    def show_categorical_dialog(self):
+        if not self.categorical_attributes:
+            print("No categorical attributes loaded.")
+            return
+
+        dialog = AttributeParameterWindow("Categorical", self.categorical_attributes, self)
+
+        # Pre-check the checkboxes with previously selected categorical attributes
+        for attr in self.selected_categorical_attributes:
+            if attr in dialog.checkboxes:
+                dialog.checkboxes[attr].setChecked(True)
+
+        if dialog.exec():
+            self.selected_categorical_attributes = dialog.get_selected_attributes()  # Store user's selections
+            print(f"Selected Categorical Attributes: {self.selected_categorical_attributes}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
